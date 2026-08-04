@@ -88,7 +88,7 @@ func TestGeneratorBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build() error = %v", err)
 	}
-	for _, expected := range []string{"# >>> go <<<", "bin/", "# >>> node <<<", "node_modules/"} {
+	for _, expected := range []string{"# >>> vek-gitignore go <<<", "bin/", "# >>> vek-gitignore node <<<", "node_modules/"} {
 		if !strings.Contains(content, expected) {
 			t.Fatalf("build() missing %q:\n%s", expected, content)
 		}

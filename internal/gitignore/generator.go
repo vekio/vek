@@ -127,7 +127,7 @@ func (g generator) build(ctx context.Context, names []string) (string, error) {
 		if i > 0 {
 			builder.WriteString("\n\n")
 		}
-		builder.WriteString("# >>> ")
+		builder.WriteString("# >>> vek-gitignore ")
 		builder.WriteString(displayTemplateName(template.Name))
 		builder.WriteString(" <<<\n")
 		builder.WriteString(strings.TrimRight(template.Content, "\r\n"))
