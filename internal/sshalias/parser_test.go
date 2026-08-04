@@ -7,12 +7,12 @@ func TestParseAliasesReadsManagedBlocksOnly(t *testing.T) {
 	HostName unmanaged.example.com
 	User root
 
-# >>> ssh-alias prod >>>
+# >>> vek-ssh-alias prod >>>
 Host prod
 	HostName prod.example.com
 	User ubuntu
 	Port 2222
-# <<< ssh-alias prod <<<
+# <<< vek-ssh-alias prod <<<
 `
 
 	aliases, err := parseAliases(content)
@@ -64,7 +64,7 @@ func TestParseAliasesRejectsCorruptBlocks(t *testing.T) {
 	}{
 		{
 			name: "unterminated",
-			content: `# >>> ssh-alias prod >>>
+			content: `# >>> vek-ssh-alias prod >>>
 Host prod
 	HostName prod.example.com
 	User ubuntu
@@ -73,38 +73,70 @@ Host prod
 		},
 		{
 			name: "mismatched markers",
-			content: `# >>> ssh-alias prod >>>
+			content: `# >>> vek-ssh-alias prod >>>
 Host prod
 	HostName prod.example.com
 	User ubuntu
 	Port 22
-# <<< ssh-alias other <<<
+# <<< vek-ssh-alias other <<<
 `,
 		},
 		{
 			name: "host differs from marker",
-			content: `# >>> ssh-alias prod >>>
+			content: `# >>> vek-ssh-alias prod >>>
 Host other
 	HostName prod.example.com
 	User ubuntu
 	Port 22
-# <<< ssh-alias prod <<<
+# <<< vek-ssh-alias prod <<<
 `,
 		},
 		{
 			name: "duplicate alias",
-			content: `# >>> ssh-alias prod >>>
+			content: `# >>> vek-ssh-alias prod >>>
 Host prod
 	HostName prod.example.com
 	User ubuntu
 	Port 22
-# <<< ssh-alias prod <<<
-# >>> ssh-alias prod >>>
+# <<< vek-ssh-alias prod <<<
+# >>> vek-ssh-alias prod >>>
 Host prod
 	HostName other.example.com
 	User ubuntu
 	Port 22
-# <<< ssh-alias prod <<<
+# <<< vek-ssh-alias prod <<<
+`,
+		},
+		{
+			name: "duplicate directive",
+			content: `# >>> vek-ssh-alias prod >>>
+Host prod
+	HostName prod.example.com
+	HostName other.example.com
+	User ubuntu
+	Port 22
+# <<< vek-ssh-alias prod <<<
+`,
+		},
+		{
+			name: "directive with extra values",
+			content: `# >>> vek-ssh-alias prod >>>
+Host prod other
+	HostName prod.example.com
+	User ubuntu
+	Port 22
+# <<< vek-ssh-alias prod <<<
+`,
+		},
+		{
+			name: "unsupported directive",
+			content: `# >>> vek-ssh-alias prod >>>
+Host prod
+	HostName prod.example.com
+	User ubuntu
+	IdentityFile ~/.ssh/id_ed25519
+	Port 22
+# <<< vek-ssh-alias prod <<<
 `,
 		},
 	}

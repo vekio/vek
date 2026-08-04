@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v3"
-	sshalias "github.com/vekio/vek/internal/ssh-alias"
+	"github.com/vekio/vek/internal/sshalias"
 )
 
 func newCmdAdd() *cli.Command {
@@ -61,10 +61,6 @@ func newCmdAdd() *cli.Command {
 
 			if err := config.Add(alias, c.Bool("force")); err != nil {
 				return fmt.Errorf("add ssh alias: %w", err)
-			}
-
-			if err := config.Save(); err != nil {
-				return fmt.Errorf("save ssh config: %w", err)
 			}
 
 			fmt.Fprintf(c.Root().Writer, "alias %q saved successfully\n", alias.Name())

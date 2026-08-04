@@ -10,6 +10,7 @@ import (
 const defaultSSHPort = 22
 const maxSSHPort = 65535
 
+// Alias is a validated, vek-managed SSH host entry.
 type Alias struct {
 	alias    string
 	hostname string
@@ -17,22 +18,27 @@ type Alias struct {
 	port     int
 }
 
+// Name returns the SSH host alias.
 func (a Alias) Name() string {
 	return a.alias
 }
 
+// Hostname returns the remote hostname or IP address.
 func (a Alias) Hostname() string {
 	return a.hostname
 }
 
+// User returns the SSH username.
 func (a Alias) User() string {
 	return a.user
 }
 
+// Port returns the SSH port.
 func (a Alias) Port() int {
 	return a.port
 }
 
+// NewAlias validates and constructs an Alias. A zero port defaults to 22.
 func NewAlias(alias, hostname, user string, port int) (Alias, error) {
 	alias = strings.TrimSpace(alias)
 	hostname = strings.TrimSpace(hostname)
@@ -66,6 +72,7 @@ func NewAlias(alias, hostname, user string, port int) (Alias, error) {
 	}, nil
 }
 
+// Block renders the managed OpenSSH configuration block for the alias.
 func (a Alias) Block() string {
 	var builder strings.Builder
 	builder.Grow(len(a.alias) + len(a.hostname) + len(a.user) + 96)
@@ -91,11 +98,11 @@ func (a Alias) Block() string {
 }
 
 func (a Alias) markerStart() string {
-	return fmt.Sprintf("# >>> ssh-alias %s >>>", a.alias)
+	return fmt.Sprintf("# >>> vek-ssh-alias %s >>>", a.alias)
 }
 
 func (a Alias) markerEnd() string {
-	return fmt.Sprintf("# <<< ssh-alias %s <<<", a.alias)
+	return fmt.Sprintf("# <<< vek-ssh-alias %s <<<", a.alias)
 }
 
 func validateSSHToken(name, value string) error {

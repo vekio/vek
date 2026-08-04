@@ -3,7 +3,7 @@ package vek
 import (
 	"github.com/urfave/cli/v3"
 	gitignore "github.com/vekio/vek/internal/cli/gitignore"
-	sshalias "github.com/vekio/vek/internal/cli/ssh-alias"
+	"github.com/vekio/vek/internal/cli/sshalias"
 )
 
 func NewCmd() *cli.Command {

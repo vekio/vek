@@ -15,7 +15,7 @@ func newCmdTemplates() *cli.Command {
 		Aliases: []string{"ls"},
 		Usage:   "list available gitignore templates and aliases",
 		Action: func(ctx context.Context, c *cli.Command) error {
-			for _, template := range gitignorecore.ListTemplateDefinitions() {
+			for _, template := range gitignorecore.Templates() {
 				fmt.Fprintf(c.Root().Writer, "%s (%s)\n", template.Name, strings.Join(template.Aliases, ", "))
 			}
 

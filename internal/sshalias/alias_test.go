@@ -48,11 +48,11 @@ func TestAliasBlockUsesSSHAliasMarkers(t *testing.T) {
 	}
 
 	block := alias.Block()
-	if !strings.Contains(block, "# >>> ssh-alias prod >>>") {
+	if !strings.Contains(block, "# >>> vek-ssh-alias prod >>>") {
 		t.Fatalf("Block() missing ssh-alias start marker:\n%s", block)
 	}
 
-	if !strings.Contains(block, "# <<< ssh-alias prod <<<") {
+	if !strings.Contains(block, "# <<< vek-ssh-alias prod <<<") {
 		t.Fatalf("Block() missing ssh-alias end marker:\n%s", block)
 	}
 

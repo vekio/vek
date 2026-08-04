@@ -1,6 +1,16 @@
 package gitignore
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func TestTemplateCompletionNames(t *testing.T) {
+	want := []string{"go", "golang", "javascript", "js", "next", "node", "nodejs", "nuxt", "opentofu", "py", "python", "react", "terraform", "tf", "tofu", "ts", "typescript", "vue"}
+	if got := templateCompletionNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("templateCompletionNames() = %#v, want %#v", got, want)
+	}
+}
 
 func TestCurrentTemplatePrefix(t *testing.T) {
 	tests := []struct {

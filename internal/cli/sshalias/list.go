@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v3"
-	sshalias "github.com/vekio/vek/internal/ssh-alias"
+	"github.com/vekio/vek/internal/sshalias"
 )
 
 func newCmdList() *cli.Command {

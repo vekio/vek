@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	aliasStartPrefix = "# >>> ssh-alias "
+	aliasStartPrefix = "# >>> vek-ssh-alias "
 	aliasStartSuffix = " >>>"
-	aliasEndPrefix   = "# <<< ssh-alias "
+	aliasEndPrefix   = "# <<< vek-ssh-alias "
 	aliasEndSuffix   = " <<<"
 )
 
@@ -24,6 +24,7 @@ func parseAliases(content string) (map[string]Alias, error) {
 	var hostname string
 	var user string
 	port := 0
+	seenDirectives := make(map[string]struct{})
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -40,6 +41,7 @@ func parseAliases(content string) (map[string]Alias, error) {
 			hostname = ""
 			user = ""
 			port = 0
+			clear(seenDirectives)
 			continue
 		}
 
@@ -77,9 +79,15 @@ func parseAliases(content string) (map[string]Alias, error) {
 			continue
 		}
 
-		fields := strings.Fields(trimmed)
-		if len(fields) < 2 {
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
+		}
+		fields := strings.Fields(trimmed)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("directive at line %d must have exactly one value", i+1)
+		}
+		if _, exists := seenDirectives[fields[0]]; exists {
+			return nil, fmt.Errorf("duplicate %s directive at line %d", fields[0], i+1)
 		}
 
 		switch fields[0] {
@@ -95,7 +103,10 @@ func parseAliases(content string) (map[string]Alias, error) {
 				return nil, fmt.Errorf("invalid port at line %d: %w", i+1, err)
 			}
 			port = parsedPort
+		default:
+			return nil, fmt.Errorf("unsupported %s directive at line %d", fields[0], i+1)
 		}
+		seenDirectives[fields[0]] = struct{}{}
 	}
 
 	if inBlock {

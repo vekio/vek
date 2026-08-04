@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v3"
-	sshalias "github.com/vekio/vek/internal/ssh-alias"
+	"github.com/vekio/vek/internal/sshalias"
 )
 
-func newCmdRemove() *cli.Command {
+func newCmdShow() *cli.Command {
 	return &cli.Command{
-		Name:      "remove",
-		Aliases:   []string{"rm"},
-		Usage:     "remove a managed ssh-alias block",
+		Name:      "show",
+		Aliases:   []string{},
+		Usage:     "show a managed ssh-alias block by alias",
 		ArgsUsage: "<alias>",
 		ShellComplete: func(ctx context.Context, c *cli.Command) {
 			completeAliasArg(ctx, c)
@@ -29,15 +29,12 @@ func newCmdRemove() *cli.Command {
 				return fmt.Errorf("load ssh config: %w", err)
 			}
 
-			if err := config.Delete(alias); err != nil {
-				return fmt.Errorf("delete ssh alias: %w", err)
+			sshAlias, ok := config.Get(alias)
+			if !ok {
+				return fmt.Errorf("alias %q not found", alias)
 			}
 
-			if err := config.Save(); err != nil {
-				return fmt.Errorf("save ssh config: %w", err)
-			}
-
-			fmt.Fprintf(c.Root().Writer, "alias %q deleted successfully\n", alias)
+			fmt.Fprint(c.Root().Writer, sshAlias.Block())
 			return nil
 		},
 	}
