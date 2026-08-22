@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/vekio/x/file"
 )
 
 var (
@@ -167,29 +168,8 @@ func (c *Config) save() error {
 		return fmt.Errorf("%w: %s", ErrConfigChanged, c.path)
 	}
 
-	tmpFile, err := os.CreateTemp(filepath.Dir(c.path), ".vek-ssh-config-*")
-	if err != nil {
-		return fmt.Errorf("create temp config for %s: %w", c.path, err)
-	}
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
-	if err := tmpFile.Chmod(0o600); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("set permissions on temp config for %s: %w", c.path, err)
-	}
-	if _, err := tmpFile.WriteString(c.content); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("write temp config for %s: %w", c.path, err)
-	}
-	if err := tmpFile.Sync(); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("sync temp config for %s: %w", c.path, err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("close temp config for %s: %w", c.path, err)
-	}
-	if err := os.Rename(tmpPath, c.path); err != nil {
-		return fmt.Errorf("replace config %s: %w", c.path, err)
+	if err := file.WriteAtomic(c.path, []byte(c.content), 0o600); err != nil {
+		return err
 	}
 	c.originalContent = c.content
 	return nil

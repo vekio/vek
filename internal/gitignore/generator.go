@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
 	"strings"
+
+	"github.com/vekio/x/file"
 )
 
 type generator struct {
@@ -41,10 +42,12 @@ func (g generator) generate(ctx context.Context, templates, output string, force
 		output = defaultOutput
 	}
 	if !force {
-		if _, err := os.Stat(output); err == nil {
+		exists, err := file.Exists(output)
+		if err != nil {
+			return err
+		}
+		if exists {
 			return fmt.Errorf("%w: %s", ErrOutputExists, output)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("stat %s: %w", output, err)
 		}
 	}
 	content, err := g.build(ctx, names)
@@ -52,60 +55,12 @@ func (g generator) generate(ctx context.Context, templates, output string, force
 		return err
 	}
 	if force {
-		return replaceFile(output, content)
+		return file.WriteAtomic(output, []byte(content), 0o644)
 	}
-	return createFile(output, content)
-}
-
-func createFile(output, content string) error {
-	file, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if errors.Is(err, os.ErrExist) {
+	if err := file.WriteExclusive(output, []byte(content), 0o644); errors.Is(err, fs.ErrExist) {
 		return fmt.Errorf("%w: %s", ErrOutputExists, output)
-	}
-	if err != nil {
-		return fmt.Errorf("write %s: %w", output, err)
-	}
-	complete := false
-	defer func() {
-		if !complete {
-			_ = os.Remove(output)
-		}
-	}()
-	if _, err := file.WriteString(content); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("write %s: %w", output, err)
-	}
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("close %s: %w", output, err)
-	}
-	complete = true
-	return nil
-}
-
-func replaceFile(output, content string) error {
-	tmpFile, err := os.CreateTemp(filepath.Dir(output), ".vek-gitignore-*")
-	if err != nil {
-		return fmt.Errorf("create temp file for %s: %w", output, err)
-	}
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
-	if err := tmpFile.Chmod(0o644); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("set permissions on temp file for %s: %w", output, err)
-	}
-	if _, err := tmpFile.WriteString(content); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("write temp file for %s: %w", output, err)
-	}
-	if err := tmpFile.Sync(); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("sync temp file for %s: %w", output, err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("close temp file for %s: %w", output, err)
-	}
-	if err := os.Rename(tmpPath, output); err != nil {
-		return fmt.Errorf("replace %s: %w", output, err)
+	} else if err != nil {
+		return err
 	}
 	return nil
 }

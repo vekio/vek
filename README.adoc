@@ -1,0 +1,48 @@
+= vek
+
+Personal developer CLI for common workflows.
+
+== Features
+
+=== Gitignore generation
+
+Build `.gitignore` files from selected templates in GitHub's official
+`github/gitignore` collection.
+
+Supported templates include Go, Node.js, Python, and Terraform/OpenTofu.
+
+[source,console]
+----
+vek gitignore go
+vek gitignore go node
+vek gitignore terraform --print
+vek gitignore list
+----
+
+=== SSH alias management
+
+Create, inspect, list, and remove managed host entries in `~/.ssh/config`.
+Existing unmanaged SSH configuration is left untouched.
+
+[source,console]
+----
+vek ssh-alias add --alias prod --hostname example.com --user deploy
+vek ssh-alias list
+vek ssh-alias show prod
+vek ssh-alias remove prod
+----
+
+== Development
+
+The project uses `mise` for tool versions and `just` for development commands.
+
+[source,console]
+----
+mise install
+just check
+just build
+----
+
+== License
+
+link:LICENSE[MIT]

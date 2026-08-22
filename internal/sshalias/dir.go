@@ -1,9 +1,13 @@
 package sshalias
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/vekio/x/file"
 )
 
 func sshConfigPath() (string, error) {
@@ -17,7 +21,7 @@ func sshConfigPath() (string, error) {
 
 func setupSSHConfig(configPath string) error {
 	sshDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(sshDir, 0o700); err != nil {
+	if err := file.EnsureParentDir(configPath, 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", sshDir, err)
 	}
 
@@ -25,12 +29,8 @@ func setupSSHConfig(configPath string) error {
 		return fmt.Errorf("set permissions on %s: %w", sshDir, err)
 	}
 
-	configFile, err := os.OpenFile(configPath, os.O_RDONLY|os.O_CREATE, 0o600)
-	if err != nil {
+	if err := file.WriteExclusive(configPath, nil, 0o600); err != nil && !errors.Is(err, fs.ErrExist) {
 		return fmt.Errorf("create %s: %w", configPath, err)
-	}
-	if err := configFile.Close(); err != nil {
-		return fmt.Errorf("close %s: %w", configPath, err)
 	}
 
 	if err := os.Chmod(configPath, 0o600); err != nil {
