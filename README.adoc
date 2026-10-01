@@ -32,6 +32,35 @@ vek ssh-alias show prod
 vek ssh-alias remove prod
 ----
 
+=== Bonsai worktrees
+
+Load the Fish integration in `~/.config/fish/config.fish` to move into a worktree
+after cloning or starting a task:
+
+[source,fish]
+----
+vek bonsai init fish | source
+----
+
+Then use `bonsai clone ...` to enter the source repository's default branch
+worktree, or `bonsai start feature/42` to enter a new task worktree. Pass
+`--bare-only` to clone without a worktree and enter the clone root. After
+confirmation, `bonsai clean` returns to `main` or the clone root. Task commands
+currently use `origin/main` as their base.
+
+From a task worktree, `bonsai submit` pushes its committed branch to `origin` so
+you can open a pull request manually. After the squash merge, `bonsai clean`
+confirms with you before removing the local worktree and branch.
+
+For Bash, load its integration in `~/.bashrc`:
+
+[source,bash]
+----
+source <(vek bonsai init bash)
+bonsai clone git@example.com:team/project.git
+bonsai start feature/42
+----
+
 == Development
 
 The project uses `mise` for tool versions and `just` for development commands.

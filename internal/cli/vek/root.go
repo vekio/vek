@@ -2,6 +2,7 @@ package vek
 
 import (
 	"github.com/urfave/cli/v3"
+	"github.com/vekio/vek/internal/cli/bonsai"
 	gitignore "github.com/vekio/vek/internal/cli/gitignore"
 	"github.com/vekio/vek/internal/cli/sshalias"
 )
@@ -19,5 +20,6 @@ func registerCommands() []*cli.Command {
 	return []*cli.Command{
 		gitignore.NewCmd(),
 		sshalias.NewCmd(),
+		bonsai.NewCmd(),
 	}
 }
