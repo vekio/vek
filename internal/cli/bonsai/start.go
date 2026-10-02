@@ -42,7 +42,8 @@ func newStartCmd() *cli.Command {
 				return err
 			}
 			worktree := filepath.Join(root, folder)
-			if err := client.Run(ctx, "worktree", "add", "-b", branch, worktree, "origin/main"); err != nil {
+			// Leave the upstream unset so the first push can track the task branch.
+			if err := client.Run(ctx, "worktree", "add", "--no-track", "-b", branch, worktree, "origin/main"); err != nil {
 				return err
 			}
 			// Shell integration uses this path to enter the new worktree.

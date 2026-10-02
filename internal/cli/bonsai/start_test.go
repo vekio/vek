@@ -101,6 +101,32 @@ func TestStartPrintPath(t *testing.T) {
 	}
 }
 
+func TestStartAllowsAutomaticUpstreamOnFirstPush(t *testing.T) {
+	source := makeSourceRepository(t, "main")
+	root := filepath.Join(t.TempDir(), "project")
+	if _, err := runClone(source, root); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "config", "branch.autoSetupMerge", "always")
+	runGit(t, root, "config", "push.autoSetupRemote", "true")
+	runGit(t, root, "config", "push.default", "simple")
+	t.Chdir(root)
+	if _, err := runStart("feature/42"); err != nil {
+		t.Fatal(err)
+	}
+	worktree := filepath.Join(root, "feature-42")
+	if got := strings.TrimSpace(runGit(t, worktree, "for-each-ref", "--format=%(upstream)", "refs/heads/feature/42")); got != "" {
+		t.Fatalf("new task upstream = %q, want none", got)
+	}
+	runGit(t, worktree, "push")
+	if got := strings.TrimSpace(runGit(t, worktree, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")); got != "origin/feature/42" {
+		t.Fatalf("upstream after push = %q", got)
+	}
+	if got, want := strings.TrimSpace(runGit(t, source, "rev-parse", "refs/heads/feature/42")), strings.TrimSpace(runGit(t, worktree, "rev-parse", "HEAD")); got != want {
+		t.Fatalf("published branch = %q, want %q", got, want)
+	}
+}
+
 func runStart(args ...string) (string, error) {
 	var output, errors bytes.Buffer
 	root := &cli.Command{Name: "vek", Writer: &output, ErrWriter: &errors, Commands: []*cli.Command{NewCmd()}}

@@ -72,6 +72,7 @@ func TestCheckoutPreservesLocalCommitsAndUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	worktree := filepath.Join(root, "feature-42")
+	runGit(t, worktree, "branch", "--set-upstream-to=origin/main", "feature/42")
 	runGit(t, worktree, "-c", "commit.gpgsign=false", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-q", "--allow-empty", "-m", "local task")
 	localHead := strings.TrimSpace(runGit(t, worktree, "rev-parse", "HEAD"))
 	runGit(t, root, "worktree", "remove", worktree)
