@@ -1,4 +1,13 @@
 # Load with: source <(vek bonsai init bash)
+vek() {
+    if [[ ${1-} == bonsai ]]; then
+        shift
+        bonsai "$@"
+    else
+        command vek "$@"
+    fi
+}
+
 bonsai() {
     if [[ $# -eq 0 ]]; then
         command vek bonsai

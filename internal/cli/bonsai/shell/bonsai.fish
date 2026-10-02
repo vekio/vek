@@ -1,4 +1,12 @@
 # Load with: vek bonsai init fish | source
+function vek --description 'Run vek and enter Bonsai worktrees'
+    if test (count $argv) -gt 0; and test "$argv[1]" = bonsai
+        bonsai $argv[2..-1]
+    else
+        command vek $argv
+    end
+end
+
 function bonsai --description 'Manage Bonsai worktrees and enter new directories'
     if test (count $argv) -eq 0
         command vek bonsai

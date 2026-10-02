@@ -42,19 +42,21 @@ after cloning, starting a task, or checking out an existing branch:
 vek bonsai init fish | source
 ----
 
-Then use `bonsai clone ...` to enter the source repository's default branch
-worktree, or `bonsai start feature/42` to enter a new task worktree.
-Use `bonsai checkout feature/42` to create its `feature-42` worktree. It uses
+Then use `vek bonsai clone ...` to enter the source repository's default branch
+worktree, or `vek bonsai start feature/42` to enter a new task worktree.
+The integration defines a shell function named `vek` that changes directories
+after successful Bonsai commands. You can also use the shorthand `bonsai ...`.
+Use `vek bonsai checkout feature/42` to create its `feature-42` worktree. It uses
 an existing local branch without fetching, preserving its commits and upstream.
 If no local branch exists, it fetches `origin` and creates a local branch tracking
 `origin/feature/42`. Local branches without an upstream track a matching cached
 origin branch when available. Pass
 `--bare-only` to clone without a worktree and enter the clone root. After
-confirmation, `bonsai clean` returns to `main` or the clone root. Task commands
+confirmation, `vek bonsai clean` returns to `main` or the clone root. Task commands
 currently use `origin/main` as their base.
 
-From a task worktree, `bonsai submit` pushes its committed branch to `origin` so
-you can open a pull request manually. After the squash merge, `bonsai clean`
+From a task worktree, `vek bonsai submit` pushes its committed branch to `origin` so
+you can open a pull request manually. After the squash merge, `vek bonsai clean`
 confirms with you before removing the local worktree and branch.
 
 For Bash, load its integration in `~/.bashrc`:
@@ -62,9 +64,9 @@ For Bash, load its integration in `~/.bashrc`:
 [source,bash]
 ----
 source <(vek bonsai init bash)
-bonsai clone git@example.com:team/project.git
-bonsai start feature/42
-bonsai checkout fix/57
+vek bonsai clone git@example.com:team/project.git
+vek bonsai start feature/42
+vek bonsai checkout fix/57
 ----
 
 == Development
