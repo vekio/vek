@@ -44,7 +44,7 @@ func TestCleanRequiresConfirmationAndKeepsRemoteBranch(t *testing.T) {
 	if _, err := os.Stat(worktree); !os.IsNotExist(err) {
 		t.Fatalf("worktree remains after clean: %v", err)
 	}
-	if got := strings.TrimSpace(runGit(t, filepath.Join(root, ".git"), "branch", "--list", "feature/42")); got != "" {
+	if got := strings.TrimSpace(runGit(t, filepath.Join(root, ".bare"), "branch", "--list", "feature/42")); got != "" {
 		t.Fatalf("local task branch remains: %q", got)
 	}
 	if got, want := strings.TrimSpace(runGit(t, filepath.Join(root, "main"), "rev-parse", "HEAD")), strings.TrimSpace(runGit(t, source, "rev-parse", "HEAD")); got != want {
@@ -95,7 +95,7 @@ func TestCleanPrintPathWithoutMainWorktree(t *testing.T) {
 	if _, err := runClone("--bare-only", source, root); err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(filepath.Join(root, ".git"))
+	t.Chdir(filepath.Join(root, ".bare"))
 	if _, err := runStart("feature/42"); err != nil {
 		t.Fatal(err)
 	}
@@ -128,13 +128,13 @@ func TestCleanPreservesTaskWhenMainCannotFastForward(t *testing.T) {
 	runGit(t, filepath.Join(root, "main"), "-c", "commit.gpgsign=false", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-q", "--allow-empty", "-m", "local main commit")
 	runGit(t, source, "-c", "commit.gpgsign=false", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-q", "--allow-empty", "-m", "remote main commit")
 	t.Chdir(worktree)
-	if _, err := runClean("y\n"); err == nil || !strings.Contains(err.Error(), "update main worktree") {
+	if _, err := runClean("y\n"); err == nil || !strings.HasPrefix(err.Error(), "git merge:") {
 		t.Fatalf("non-fast-forward clean error = %v", err)
 	}
 	if _, err := os.Stat(worktree); err != nil {
 		t.Fatalf("task worktree removed after failed main update: %v", err)
 	}
-	if got := strings.TrimSpace(runGit(t, filepath.Join(root, ".git"), "branch", "--list", "feature/42")); got == "" {
+	if got := strings.TrimSpace(runGit(t, filepath.Join(root, ".bare"), "branch", "--list", "feature/42")); got == "" {
 		t.Fatal("task branch was deleted after failed main update")
 	}
 }

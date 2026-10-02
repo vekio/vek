@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// Clone into <path>/.git and normally check out the default branch beside it.
+// Clone into <path>/.bare and normally check out the default branch beside it.
 func newCloneCmd() *cli.Command {
 	return &cli.Command{
 		Name:      "clone",
@@ -27,62 +27,66 @@ func newCloneCmd() *cli.Command {
 			printPathFlag(),
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Choose the clone folder from the path argument or repository name.
 			repoURL := c.StringArg("repoURL")
 			root, err := resolveCloneRoot(repoURL, c.StringArg("path"))
 			if err != nil {
 				return err
 			}
-			if _, err := os.Lstat(root); err == nil {
-				return fmt.Errorf("destination %q already exists", root)
-			} else if !os.IsNotExist(err) {
-				return fmt.Errorf("inspect destination %q: %w", root, err)
+			// Create a new folder for the bare repository and its worktrees.
+			if err := os.MkdirAll(filepath.Dir(root), 0o755); err != nil {
+				return err
 			}
-			if err := os.MkdirAll(root, 0o755); err != nil {
-				return fmt.Errorf("create destination %q: %w", root, err)
+			if err := os.Mkdir(root, 0o755); err != nil {
+				return err
 			}
 
+			// Store Git data in .bare without checking out any files.
 			client := newGitClient(c)
-			gitDir := filepath.Join(root, ".git")
-			if err := client.CloneBare(ctx, repoURL, gitDir); err != nil {
-				// Git usually removes .git on failure. Remove the empty parent too
-				// so the same destination can be used for another attempt.
+			gitDir := filepath.Join(root, ".bare")
+			if err := client.Run(ctx, "clone", "--bare", "--", repoURL, gitDir); err != nil {
+				// Remove the empty clone folder so the user can retry.
 				_ = os.Remove(root)
-				return fmt.Errorf("clone into %q: %w", gitDir, err)
+				return err
 			}
+			// Let Git commands in the clone folder find .bare.
+			if err := os.WriteFile(filepath.Join(root, ".git"), []byte("gitdir: ./.bare\n"), 0o644); err != nil {
+				return err
+			}
+			// Configure future fetches to create origin/* remote branches.
 			client.In(gitDir)
-			if err := client.Config(ctx); err != nil {
-				return fmt.Errorf("configure clone at %q: %w", root, err)
+			if err := client.Run(ctx, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"); err != nil {
+				return err
 			}
 
 			destination := root
 			if !c.Bool("bare-only") {
-				// Bare clones store the source branches locally. Fetch after setting
-				// a refspec so origin/* is available to later Bonsai commands.
-				if err := client.FetchOrigin(ctx); err != nil {
-					return fmt.Errorf("fetch origin: %w", err)
+				// Fetch origin/* and read the default branch from the cloned HEAD.
+				if err := client.Run(ctx, "fetch", "origin"); err != nil {
+					return err
 				}
-				defaultBranch, err := client.Output(ctx, "symbolic-ref", "--quiet", "--short", "HEAD")
+				defaultBranch, err := client.Output(ctx, "symbolic-ref", "--short", "HEAD")
 				if err != nil {
-					return fmt.Errorf("find default branch: %w", err)
+					return err
 				}
-				upstream := "origin/" + defaultBranch
-				if _, err := client.Output(ctx, "rev-parse", "--verify", "--quiet", "refs/remotes/"+upstream+"^{commit}"); err != nil {
-					return fmt.Errorf("upstream branch %q unavailable: %w", upstream, err)
-				}
+				// Map branch names like release/main to folders like release-main.
 				folder, err := worktreeName(defaultBranch)
 				if err != nil {
-					return fmt.Errorf("invalid default branch %q: %w", defaultBranch, err)
+					return err
 				}
-				// The bare clone already created this branch locally; do not use -b.
+				// Create a worktree for the local branch created by the bare clone.
 				destination = filepath.Join(root, folder)
 				if err := client.Run(ctx, "worktree", "add", destination, defaultBranch); err != nil {
-					return fmt.Errorf("create worktree for %q: %w", defaultBranch, err)
+					return err
 				}
+				// Track the matching branch on origin for pulls and pushes.
+				upstream := "origin/" + defaultBranch
 				if err := client.In(destination).Run(ctx, "branch", "--set-upstream-to="+upstream, defaultBranch); err != nil {
-					return fmt.Errorf("set upstream %q: %w", upstream, err)
+					return err
 				}
 			}
 
+			// Shell integration uses this path to enter the new worktree or root.
 			if c.Bool("print-path") {
 				fmt.Fprintln(c.Root().Writer, destination)
 				return nil
@@ -96,9 +100,6 @@ func newCloneCmd() *cli.Command {
 // resolveCloneRoot returns the absolute path of the repository container.
 // Without a path argument, it uses the repository name in the current directory.
 func resolveCloneRoot(repoURL, destinationPath string) (string, error) {
-	if strings.TrimSpace(repoURL) == "" {
-		return "", fmt.Errorf("repo URL is required")
-	}
 	if destinationPath == "" {
 		name, err := repoName(repoURL)
 		if err != nil {

@@ -3,7 +3,6 @@ package bonsai
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -24,6 +23,7 @@ func newStartCmd() *cli.Command {
 			printPathFlag(),
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Map the task name to a folder beside .bare.
 			branch := c.StringArg("task-name")
 			folder, err := worktreeName(branch)
 			if err != nil {
@@ -37,15 +37,15 @@ func newStartCmd() *cli.Command {
 			client.In(gitDir)
 			root := filepath.Dir(gitDir)
 
+			// Fetch the latest main and create the task branch and worktree.
+			if err := client.Run(ctx, "fetch", "origin"); err != nil {
+				return err
+			}
 			worktree := filepath.Join(root, folder)
-			if _, err := os.Lstat(worktree); err == nil {
-				return fmt.Errorf("worktree path %q already exists", worktree)
-			} else if !os.IsNotExist(err) {
-				return fmt.Errorf("inspect worktree path %q: %w", worktree, err)
+			if err := client.Run(ctx, "worktree", "add", "-b", branch, worktree, "origin/main"); err != nil {
+				return err
 			}
-			if err := client.AddWorktree(ctx, branch, worktree); err != nil {
-				return fmt.Errorf("start task %q: %w", branch, err)
-			}
+			// Shell integration uses this path to enter the new worktree.
 			if c.Bool("print-path") {
 				fmt.Fprintln(c.Root().Writer, worktree)
 				return nil

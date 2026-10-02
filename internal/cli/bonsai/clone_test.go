@@ -25,7 +25,14 @@ func TestCloneBareAndMainWorktree(t *testing.T) {
 	if !strings.Contains(output, defaultRoot) {
 		t.Fatalf("clone output %q does not contain %q", output, defaultRoot)
 	}
-	bare := filepath.Join(defaultRoot, ".git")
+	bare := filepath.Join(defaultRoot, ".bare")
+	gitFile, err := os.ReadFile(filepath.Join(defaultRoot, ".git"))
+	if err != nil || string(gitFile) != "gitdir: ./.bare\n" {
+		t.Fatalf("root .git file = %q, %v", gitFile, err)
+	}
+	if got := strings.TrimSpace(runGit(t, defaultRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")); got != bare {
+		t.Fatalf("root common Git directory = %q", got)
+	}
 	if got := strings.TrimSpace(runGit(t, bare, "rev-parse", "--is-bare-repository")); got != "true" {
 		t.Fatalf("bare repository = %q", got)
 	}
@@ -48,12 +55,16 @@ func TestCloneBareAndMainWorktree(t *testing.T) {
 		t.Fatal(err)
 	}
 	refCheck := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/main")
-	refCheck.Dir = filepath.Join(explicitRoot, ".git")
+	refCheck.Dir = filepath.Join(explicitRoot, ".bare")
 	if err := refCheck.Run(); err == nil {
 		t.Fatal("bare-only clone fetched origin/main")
 	}
 	if _, err := os.Stat(filepath.Join(explicitRoot, "main")); !os.IsNotExist(err) {
 		t.Fatalf("unexpected main worktree: %v", err)
+	}
+	gitFile, err = os.ReadFile(filepath.Join(explicitRoot, ".git"))
+	if err != nil || string(gitFile) != "gitdir: ./.bare\n" {
+		t.Fatalf("bare-only root .git file = %q, %v", gitFile, err)
 	}
 }
 
@@ -90,17 +101,17 @@ func TestCloneRejectsExistingDestinationAndUnbornDefaultBranch(t *testing.T) {
 	if err := os.Mkdir(existing, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runClone(source, existing); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := runClone(source, existing); !os.IsExist(err) {
 		t.Fatalf("existing destination error = %v", err)
 	}
 
 	empty := filepath.Join(t.TempDir(), "empty")
 	runGit(t, "", "init", "-q", "-b", "main", empty)
 	destination := filepath.Join(t.TempDir(), "clone")
-	if _, err := runClone(empty, destination); err == nil || !strings.Contains(err.Error(), "upstream branch \"origin/main\" unavailable") {
+	if _, err := runClone(empty, destination); err == nil || !strings.HasPrefix(err.Error(), "git ") {
 		t.Fatalf("unborn default branch error = %v", err)
 	}
-	if got := strings.TrimSpace(runGit(t, filepath.Join(destination, ".git"), "rev-parse", "--is-bare-repository")); got != "true" {
+	if got := strings.TrimSpace(runGit(t, filepath.Join(destination, ".bare"), "rev-parse", "--is-bare-repository")); got != "true" {
 		t.Fatalf("retained bare clone = %q", got)
 	}
 }

@@ -33,7 +33,7 @@ func TestStartFromWorktreeAndProjectRoot(t *testing.T) {
 	if got, want := strings.TrimSpace(runGit(t, worktree, "rev-parse", "HEAD")), strings.TrimSpace(runGit(t, source, "rev-parse", "HEAD")); got != want {
 		t.Fatalf("worktree HEAD = %q, origin main = %q", got, want)
 	}
-	if _, err := runStart("feature-42-authentication"); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := runStart("feature-42-authentication"); err == nil || !strings.HasPrefix(err.Error(), "git worktree:") {
 		t.Fatalf("colliding worktree name error = %v", err)
 	}
 
@@ -44,20 +44,20 @@ func TestStartFromWorktreeAndProjectRoot(t *testing.T) {
 	if got := strings.TrimSpace(runGit(t, filepath.Join(root, "fix-57-cache"), "branch", "--show-current")); got != "fix/57-cache" {
 		t.Fatalf("second worktree branch = %q", got)
 	}
-	if _, err := runStart("fix/57-cache"); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := runStart("fix/57-cache"); err == nil || !strings.HasPrefix(err.Error(), "git worktree:") {
 		t.Fatalf("duplicate task error = %v", err)
 	}
 }
 
 func TestStartRejectsInvalidLocationAndTask(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if _, err := runStart("task"); err == nil || !strings.Contains(err.Error(), "find Bonsai repository") {
+	if _, err := runStart("task"); err == nil || !strings.HasPrefix(err.Error(), "git rev-parse:") {
 		t.Fatalf("outside repository error = %v", err)
 	}
 
 	source := makeSourceRepository(t, "main")
 	t.Chdir(source)
-	if _, err := runStart("task"); err == nil || !strings.Contains(err.Error(), "not a bare repository") {
+	if _, err := runStart("task"); err == nil || !strings.Contains(err.Error(), "not a Bonsai clone") {
 		t.Fatalf("ordinary repository error = %v", err)
 	}
 	root := filepath.Join(t.TempDir(), "project")
@@ -76,7 +76,7 @@ func TestStartFromBareCloneWithoutMainWorktree(t *testing.T) {
 	if _, err := runClone("--bare-only", source, root); err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(filepath.Join(root, ".git"))
+	t.Chdir(filepath.Join(root, ".bare"))
 	if _, err := runStart("task"); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestStartPrintPath(t *testing.T) {
 	if _, err := runClone(source, root); err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(filepath.Join(root, ".git"))
+	t.Chdir(filepath.Join(root, ".bare"))
 	output, err := runStart("--print-path", "feature/42")
 	if err != nil {
 		t.Fatal(err)

@@ -46,7 +46,7 @@ func TestClientStreamsOutputAndChangesDirectory(t *testing.T) {
 	}
 }
 
-func TestAddWorktreeStartsFromOriginMain(t *testing.T) {
+func TestClientRunsWorktreeCommands(t *testing.T) {
 	ctx := context.Background()
 	var output, errors bytes.Buffer
 	client := New(&output, &errors)
@@ -60,29 +60,32 @@ func TestAddWorktreeStartsFromOriginMain(t *testing.T) {
 		t.Fatal(err)
 	}
 	bare := filepath.Join(parent, "bare.git")
-	if err := client.In(parent).CloneBare(ctx, source, bare); err != nil {
+	if err := client.In(parent).Run(ctx, "clone", "--bare", "--", source, bare); err != nil {
 		t.Fatal(err)
 	}
 	client.In(bare)
-	if err := client.Config(ctx); err != nil {
+	if err := client.Run(ctx, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.Run(ctx, "show-ref", "--verify", "--quiet", "refs/remotes/origin/main"); err == nil {
-		t.Fatal("origin/main exists before AddWorktree fetch")
+		t.Fatal("origin/main exists before fetch")
+	}
+	if err := client.Run(ctx, "fetch", "origin"); err != nil {
+		t.Fatal(err)
 	}
 	invalidWorktree := filepath.Join(parent, "escape")
-	if err := client.AddWorktree(ctx, "../escape", invalidWorktree); err == nil {
+	if err := client.Run(ctx, "worktree", "add", "-b", "../escape", invalidWorktree, "origin/main"); err == nil {
 		t.Fatalf("invalid branch error = %v", err)
 	}
 	if _, err := os.Stat(invalidWorktree); !os.IsNotExist(err) {
 		t.Fatalf("invalid branch created a worktree: %v", err)
 	}
 	if err := client.Run(ctx, "show-ref", "--verify", "--quiet", "refs/remotes/origin/main"); err != nil {
-		t.Fatal("AddWorktree did not fetch origin before worktree add")
+		t.Fatal("origin/main is missing after fetch")
 	}
 
 	worktree := filepath.Join(parent, "task")
-	if err := client.AddWorktree(ctx, "feature/task", worktree); err != nil {
+	if err := client.Run(ctx, "worktree", "add", "-b", "feature/task", worktree, "origin/main"); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.Run(ctx, "show-ref", "--verify", "--quiet", "refs/remotes/origin/main"); err != nil {

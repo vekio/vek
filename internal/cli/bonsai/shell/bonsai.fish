@@ -8,7 +8,7 @@ function bonsai --description 'Manage Bonsai worktrees and enter new directories
     set -l action $argv[1]
     set -l arguments $argv[2..-1]
     switch $action
-        case clone start clean
+        case clone start checkout clean
             set -l destination (command vek bonsai $action --print-path $arguments)
             or return $status
             builtin cd -- "$destination"

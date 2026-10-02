@@ -8,7 +8,7 @@ bonsai() {
     local action=$1
     shift
     case "$action" in
-        clone|start|clean)
+        clone|start|checkout|clean)
             local destination
             destination="$(command vek bonsai "$action" --print-path "$@" && printf '.')" || return
             destination=${destination%.}

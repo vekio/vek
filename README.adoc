@@ -35,7 +35,7 @@ vek ssh-alias remove prod
 === Bonsai worktrees
 
 Load the Fish integration in `~/.config/fish/config.fish` to move into a worktree
-after cloning or starting a task:
+after cloning, starting a task, or checking out an existing branch:
 
 [source,fish]
 ----
@@ -43,7 +43,12 @@ vek bonsai init fish | source
 ----
 
 Then use `bonsai clone ...` to enter the source repository's default branch
-worktree, or `bonsai start feature/42` to enter a new task worktree. Pass
+worktree, or `bonsai start feature/42` to enter a new task worktree.
+Use `bonsai checkout feature/42` to create its `feature-42` worktree. It uses
+an existing local branch without fetching, preserving its commits and upstream.
+If no local branch exists, it fetches `origin` and creates a local branch tracking
+`origin/feature/42`. Local branches without an upstream track a matching cached
+origin branch when available. Pass
 `--bare-only` to clone without a worktree and enter the clone root. After
 confirmation, `bonsai clean` returns to `main` or the clone root. Task commands
 currently use `origin/main` as their base.
@@ -59,6 +64,7 @@ For Bash, load its integration in `~/.bashrc`:
 source <(vek bonsai init bash)
 bonsai clone git@example.com:team/project.git
 bonsai start feature/42
+bonsai checkout fix/57
 ----
 
 == Development

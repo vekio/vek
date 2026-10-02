@@ -67,21 +67,3 @@ func (c *Client) Output(ctx context.Context, args ...string) (string, error) {
 	}
 	return strings.TrimSpace(string(output)), nil
 }
-
-// CloneBare clones repoURL into gitDir without checking out a worktree.
-func (c *Client) CloneBare(ctx context.Context, repoURL, gitDir string) error {
-	return c.Run(ctx, "clone", "--bare", "--", repoURL, gitDir)
-}
-
-// Config sets the refspec used by future fetches from origin.
-func (c *Client) Config(ctx context.Context) error {
-	return c.Run(ctx, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
-}
-
-// AddWorktree fetches origin and creates branch and its worktree from origin/main.
-func (c *Client) AddWorktree(ctx context.Context, branch, path string) error {
-	if err := c.FetchOrigin(ctx); err != nil {
-		return fmt.Errorf("fetch origin: %w", err)
-	}
-	return c.Run(ctx, "worktree", "add", "-b", branch, path, "origin/main")
-}

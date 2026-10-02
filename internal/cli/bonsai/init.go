@@ -19,6 +19,7 @@ func newInitCmd() *cli.Command {
 			shellArg(),
 		},
 		Action: func(_ context.Context, c *cli.Command) error {
+			// Choose the integration script for the requested shell.
 			var script string
 			switch shell := c.StringArg("shell"); shell {
 			case "bash":
@@ -28,6 +29,7 @@ func newInitCmd() *cli.Command {
 			default:
 				return fmt.Errorf("unsupported shell %q (supported: bash, fish)", shell)
 			}
+			// Print the script so the shell can load it.
 			_, err := io.WriteString(c.Root().Writer, script)
 			return err
 		},

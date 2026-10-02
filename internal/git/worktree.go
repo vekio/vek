@@ -1,7 +1,6 @@
 package git
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
@@ -15,16 +14,8 @@ type Worktree struct {
 	Prunable bool
 }
 
-// Worktrees lists the worktrees known to Git, including the bare repository.
-func (c *Client) Worktrees(ctx context.Context) ([]Worktree, error) {
-	output, err := c.Output(ctx, "worktree", "list", "--porcelain", "-z")
-	if err != nil {
-		return nil, err
-	}
-	return parseWorktrees(output)
-}
-
-func parseWorktrees(output string) ([]Worktree, error) {
+// ParseWorktrees reads the output of git worktree list --porcelain -z.
+func ParseWorktrees(output string) ([]Worktree, error) {
 	if output == "" {
 		return nil, nil
 	}

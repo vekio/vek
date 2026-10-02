@@ -17,6 +17,7 @@ func NewCmd() *cli.Command {
 			newInitCmd(),
 			newCloneCmd(),
 			newStartCmd(),
+			newCheckoutCmd(),
 			newListCmd(),
 			newStatusCmd(),
 			newSubmitCmd(),
@@ -33,8 +34,7 @@ func newGitClient(c *cli.Command) *git.Client {
 	return git.New(stdout, c.Root().ErrWriter)
 }
 
-// Resume la rama y el estado del worktree actual.
-// bonsai status
+// Show the current worktree, branch, and changes.
 func newStatusCmd() *cli.Command {
 	return &cli.Command{
 		Name:      "status",
@@ -42,33 +42,9 @@ func newStatusCmd() *cli.Command {
 		Arguments: []cli.Argument{},
 		Flags:     []cli.Flag{},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			// Ejecutar desde un worktree; --show-toplevel falla en el bare.
-			// git rev-parse --show-toplevel
-			// git branch --show-current
-			// git status --porcelain=v1
-			// git rev-parse --path-format=absolute --git-common-dir
-			// El padre del .git común da el nombre del repositorio.
-			// Comprobar origin/main; si falta, mostrar el estado sin divergencia.
-			// git rev-list --left-right --count origin/main...HEAD
-			// El primer número es Behind; el segundo, Ahead.
-			// git log --oneline origin/main..HEAD
-			// Salida esperada:
-			// Repository    overmind
-			// Worktree      42-authentication
-			// Branch        feature/42-authentication
-			// Base          origin/main
-			//
-			// Status        clean
-			// Ahead         3
-			// Behind        1
-			//
-			// Commits
-			// abc123  feat: add authentication
-			// def456  test: add authentication tests
-			// 987abc  fix: token validation
-
-			fmt.Println("status")
-			return nil
+			// TODO: Read the worktree, status, and origin/main divergence.
+			_, err := fmt.Fprintln(c.Root().Writer, "status")
+			return err
 		},
 	}
 }

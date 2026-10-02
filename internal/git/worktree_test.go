@@ -7,7 +7,7 @@ func TestParseWorktrees(t *testing.T) {
 		"worktree /repo/main\x00HEAD abc123\x00branch refs/heads/main\x00\x00" +
 		"worktree /repo/feature\n42\x00HEAD def456\x00detached\x00\x00" +
 		"worktree /repo/old\x00HEAD abc123\x00branch refs/heads/old\x00prunable gitdir file points to non-existent location\x00\x00"
-	worktrees, err := parseWorktrees(output)
+	worktrees, err := ParseWorktrees(output)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,8 +30,8 @@ func TestParseWorktrees(t *testing.T) {
 
 func TestParseWorktreesRejectsIncompleteOutput(t *testing.T) {
 	for _, output := range []string{"worktree /repo/main\x00HEAD abc", "HEAD abc\x00\x00"} {
-		if _, err := parseWorktrees(output); err == nil {
-			t.Errorf("parseWorktrees(%q) succeeded", output)
+		if _, err := ParseWorktrees(output); err == nil {
+			t.Errorf("ParseWorktrees(%q) succeeded", output)
 		}
 	}
 }

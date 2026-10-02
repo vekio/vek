@@ -33,7 +33,7 @@ func TestListWorktreesAndChanges(t *testing.T) {
 			t.Errorf("list output %q is missing %q", output, want)
 		}
 	}
-	if strings.Contains(output, filepath.Join(root, ".git")) {
+	if strings.Contains(output, filepath.Join(root, ".bare")) {
 		t.Fatalf("bare entry appears in list: %q", output)
 	}
 	t.Chdir(root)
@@ -48,7 +48,7 @@ func TestListBareCloneAndDetachedWorktree(t *testing.T) {
 	if _, err := runClone("--bare-only", source, root); err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(filepath.Join(root, ".git"))
+	t.Chdir(filepath.Join(root, ".bare"))
 	output, err := runList()
 	if err != nil {
 		t.Fatal(err)
@@ -72,8 +72,21 @@ func TestListBareCloneAndDetachedWorktree(t *testing.T) {
 
 func TestListRejectsNonBonsaiRepository(t *testing.T) {
 	t.Chdir(makeSourceRepository(t, "main"))
-	if _, err := runList(); err == nil || !strings.Contains(err.Error(), "not a bare repository") {
+	if _, err := runList(); err == nil || !strings.Contains(err.Error(), "not a Bonsai clone") {
 		t.Fatalf("list ordinary repository error = %v", err)
+	}
+}
+
+func TestListRejectsLegacyBareClone(t *testing.T) {
+	source := makeSourceRepository(t, "main")
+	root := filepath.Join(t.TempDir(), "project")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, "", "clone", "--bare", "--", source, filepath.Join(root, ".git"))
+	t.Chdir(root)
+	if _, err := runList(); err == nil || !strings.Contains(err.Error(), "not a Bonsai clone") {
+		t.Fatalf("list legacy clone error = %v", err)
 	}
 }
 
@@ -83,7 +96,7 @@ func TestListPrunableWorktree(t *testing.T) {
 	if _, err := runClone(source, root); err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(filepath.Join(root, ".git"))
+	t.Chdir(filepath.Join(root, ".bare"))
 	if _, err := runStart("feature/42"); err != nil {
 		t.Fatal(err)
 	}

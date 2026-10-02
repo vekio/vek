@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v3"
+	"github.com/vekio/vek/internal/git"
 )
 
 func newCleanCmd() *cli.Command {
@@ -20,31 +21,26 @@ func newCleanCmd() *cli.Command {
 			printPathFlag(),
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			// Reject dirty or non-task worktrees before any destructive operation.
+			// Find the current task and require a clean worktree.
 			client := newGitClient(c)
 			gitDir, worktree, branch, err := resolveTaskWorktree(ctx, client)
 			if err != nil {
 				return err
 			}
 			client.In(worktree)
-			clean, err := client.IsClean(ctx)
+			changes, err := client.Output(ctx, "status", "--porcelain=v1", "-z")
 			if err != nil {
-				return fmt.Errorf("inspect current worktree: %w", err)
-			}
-			if !clean {
-				return fmt.Errorf("worktree %q has uncommitted changes", worktree)
-			}
-			// Refresh remote refs, then ask the user to confirm the squash merge:
-			// Git ancestry cannot prove that a squash commit contains this work.
-			if err := client.FetchPruneOrigin(ctx); err != nil {
-				return fmt.Errorf("fetch origin: %w", err)
-			}
-			if err := client.VerifyOriginMain(ctx); err != nil {
 				return err
 			}
-
-			// Shell integration captures stdout as a destination path, so keep
-			// the confirmation prompt visible on stderr in that mode.
+			if changes != "" {
+				return fmt.Errorf("worktree %q has uncommitted changes", worktree)
+			}
+			// Refresh origin before updating main.
+			if err := client.Run(ctx, "fetch", "--prune", "origin"); err != nil {
+				return err
+			}
+			// Ask about the squash merge; Git history cannot confirm it.
+			// Keep prompts on stderr when stdout is used for the next path.
 			messageWriter := c.Root().Writer
 			if c.Bool("print-path") {
 				messageWriter = c.Root().ErrWriter
@@ -58,7 +54,7 @@ func newCleanCmd() *cli.Command {
 			}
 			answer, err := bufio.NewReader(reader).ReadString('\n')
 			if err != nil && err != io.EOF {
-				return fmt.Errorf("read confirmation: %w", err)
+				return err
 			}
 			if !strings.EqualFold(strings.TrimSpace(answer), "y") {
 				fmt.Fprintln(messageWriter, "Clean cancelled")
@@ -68,44 +64,45 @@ func newCleanCmd() *cli.Command {
 				return nil
 			}
 
-			// Update main before deleting the task. Any dirty state or failed
-			// fast-forward leaves the task worktree and branch untouched.
-			worktrees, err := client.In(gitDir).Worktrees(ctx)
+			// Find the main worktree and update it before removing the task.
+			output, err := client.In(gitDir).Output(ctx, "worktree", "list", "--porcelain", "-z")
 			if err != nil {
-				return fmt.Errorf("find main worktree: %w", err)
+				return err
+			}
+			worktrees, err := git.ParseWorktrees(output)
+			if err != nil {
+				return err
 			}
 			nextDir := filepath.Dir(gitDir)
 			for _, tree := range worktrees {
 				if tree.Bare || tree.Branch != "main" {
 					continue
 				}
-				if tree.Prunable {
-					return fmt.Errorf("main worktree %q is unavailable", tree.Path)
-				}
 				client.In(tree.Path)
-				clean, err := client.IsClean(ctx)
+				changes, err := client.Output(ctx, "status", "--porcelain=v1", "-z")
 				if err != nil {
-					return fmt.Errorf("inspect main worktree: %w", err)
+					return err
 				}
-				if !clean {
+				if changes != "" {
 					return fmt.Errorf("main worktree %q has uncommitted changes", tree.Path)
 				}
-				if err := client.FastForwardOriginMain(ctx); err != nil {
-					return fmt.Errorf("update main worktree: %w", err)
+				if err := client.Run(ctx, "merge", "--ff-only", "origin/main"); err != nil {
+					return err
 				}
 				nextDir = tree.Path
 				break
 			}
 
-			// Run removal from the bare repository, outside the worktree being
-			// deleted. Squash merges require -D for the local task branch.
+			// Remove the worktree from .bare, outside the folder being deleted.
 			client.In(gitDir)
-			if err := client.RemoveWorktree(ctx, worktree); err != nil {
-				return fmt.Errorf("remove worktree %q: %w", worktree, err)
+			if err := client.Run(ctx, "worktree", "remove", worktree); err != nil {
+				return err
 			}
-			if err := client.DeleteBranchForce(ctx, branch); err != nil {
-				return fmt.Errorf("worktree removed, but could not delete branch %q: %w", branch, err)
+			// Delete the local branch; squash merges require -D.
+			if err := client.Run(ctx, "branch", "-D", branch); err != nil {
+				return err
 			}
+			// Return to main, or the clone folder when no main worktree exists.
 			if c.Bool("print-path") {
 				fmt.Fprintln(c.Root().Writer, nextDir)
 				return nil

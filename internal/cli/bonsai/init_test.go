@@ -34,21 +34,23 @@ func TestInitFishChangesDirectoryAfterSuccessfulCommand(t *testing.T) {
 	if err := os.Mkdir(destination, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("fish", "--no-config", "-c", `source $argv[1]; bonsai start feature/42; pwd`, initPath)
+	for _, action := range []string{"start", "checkout"} {
+		cmd := exec.Command("fish", "--no-config", "-c", `source $argv[1]; bonsai $argv[2] feature/42; pwd`, initPath, action)
+		cmd.Dir = directory
+		cmd.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "BONSAI_TEST_DEST="+destination)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("run fish %s integration: %v\n%s", action, err, output)
+		}
+		if got := strings.TrimSpace(string(output)); got != destination {
+			t.Fatalf("Fish %s directory = %q, want %q", action, got, destination)
+		}
+	}
+
+	cmd := exec.Command("fish", "--no-config", "-c", `source $argv[1]; bonsai start fail; set -l result $status; pwd; exit $result`, initPath)
 	cmd.Dir = directory
 	cmd.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "BONSAI_TEST_DEST="+destination)
 	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("run fish integration: %v\n%s", err, output)
-	}
-	if got := strings.TrimSpace(string(output)); got != destination {
-		t.Fatalf("Fish directory = %q, want %q", got, destination)
-	}
-
-	cmd = exec.Command("fish", "--no-config", "-c", `source $argv[1]; bonsai start fail; set -l result $status; pwd; exit $result`, initPath)
-	cmd.Dir = directory
-	cmd.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "BONSAI_TEST_DEST="+destination)
-	output, err = cmd.CombinedOutput()
 	if err == nil {
 		t.Fatal("failed Bonsai command succeeded")
 	}
@@ -83,15 +85,17 @@ func TestInitBashChangesDirectoryAfterSuccessfulCommand(t *testing.T) {
 	if err := os.Mkdir(destination, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("bash", "--noprofile", "--norc", "-c", `source "$1"; bonsai start feature/42; pwd`, "bash", initPath)
-	cmd.Dir = directory
-	cmd.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "BONSAI_TEST_DEST="+destination)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("run Bash integration: %v\n%s", err, output)
-	}
-	if got := strings.TrimSpace(string(output)); got != destination {
-		t.Fatalf("Bash directory = %q, want %q", got, destination)
+	for _, action := range []string{"start", "checkout"} {
+		cmd := exec.Command("bash", "--noprofile", "--norc", "-c", `source "$1"; bonsai "$2" feature/42; pwd`, "bash", initPath, action)
+		cmd.Dir = directory
+		cmd.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "BONSAI_TEST_DEST="+destination)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("run Bash %s integration: %v\n%s", action, err, output)
+		}
+		if got := strings.TrimSpace(string(output)); got != destination {
+			t.Fatalf("Bash %s directory = %q, want %q", action, got, destination)
+		}
 	}
 }
 
