@@ -54,8 +54,8 @@ func TestCheckoutExistingRemoteBranch(t *testing.T) {
 			if got := strings.TrimSpace(runGit(t, worktree, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")); got != "origin/feature/42" {
 				t.Fatalf("worktree upstream = %q", got)
 			}
-			if _, err := runCheckout("feature/42"); err == nil || !strings.HasPrefix(err.Error(), "git worktree:") {
-				t.Fatalf("duplicate checkout error = %v", err)
+			if output, err := runCheckout("--print-path", "feature/42"); err != nil || output != worktree+"\n" {
+				t.Fatalf("existing checkout = %q, %v", output, err)
 			}
 		})
 	}
@@ -175,14 +175,70 @@ func TestCheckoutPreservesChangesInExistingWorktree(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(root)
-	if _, err := runCheckout("feature/42"); err == nil || !strings.HasPrefix(err.Error(), "git worktree:") {
-		t.Fatalf("branch already checked out error = %v", err)
+	runGit(t, root, "remote", "remove", "origin")
+	if output, err := runCheckout("--print-path", "feature/42"); err != nil || output != existing+"\n" {
+		t.Fatalf("existing dirty worktree = %q, %v", output, err)
 	}
 	if got, err := os.ReadFile(dirtyFile); err != nil || string(got) != "pending work" {
 		t.Fatalf("pending changes = %q, %v", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "feature-42")); !os.IsNotExist(err) {
 		t.Fatalf("duplicate worktree created: %v", err)
+	}
+	if output, err := runCheckout("feature/42"); err != nil || !strings.Contains(output, "Using worktree for feature/42 in "+existing) {
+		t.Fatalf("existing worktree output = %q, %v", output, err)
+	}
+}
+
+func TestCheckoutSwitchesBetweenWorktreesWithPendingChanges(t *testing.T) {
+	source := makeSourceRepository(t, "main")
+	root := filepath.Join(t.TempDir(), "project")
+	if _, err := runClone(source, root); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	if _, err := runStart("feature/42"); err != nil {
+		t.Fatal(err)
+	}
+	mainTree := filepath.Join(root, "main")
+	taskTree := filepath.Join(root, "feature-42")
+	for _, tree := range []string{mainTree, taskTree} {
+		if err := os.WriteFile(filepath.Join(tree, "pending.txt"), []byte("pending work"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runGit(t, taskTree, "add", "pending.txt")
+	mainStatus := runGit(t, mainTree, "status", "--porcelain=v1", "-z")
+	taskStatus := runGit(t, taskTree, "status", "--porcelain=v1", "-z")
+	t.Chdir(taskTree)
+	for _, tc := range []struct{ branch, path string }{{"main", mainTree}, {"feature/42", taskTree}} {
+		if output, err := runCheckout("--print-path", tc.branch); err != nil || output != tc.path+"\n" {
+			t.Fatalf("checkout %q = %q, %v", tc.branch, output, err)
+		}
+	}
+	if got := runGit(t, mainTree, "status", "--porcelain=v1", "-z"); got != mainStatus {
+		t.Fatalf("main changes were altered: %q, want %q", got, mainStatus)
+	}
+	if got := runGit(t, taskTree, "status", "--porcelain=v1", "-z"); got != taskStatus {
+		t.Fatalf("task changes were altered: %q, want %q", got, taskStatus)
+	}
+}
+
+func TestCheckoutRejectsMissingRegisteredWorktree(t *testing.T) {
+	source := makeSourceRepository(t, "main")
+	root := filepath.Join(t.TempDir(), "project")
+	if _, err := runClone(source, root); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	if _, err := runStart("feature/42"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, "feature-42")); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := runCheckout("--print-path", "feature/42"); err == nil || !strings.HasPrefix(err.Error(), "git worktree:") || output != "" {
+		t.Fatalf("missing registered worktree = %q, %v", output, err)
 	}
 }
 

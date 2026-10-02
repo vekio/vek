@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 
 	"github.com/urfave/cli/v3"
+	"github.com/vekio/vek/internal/git"
 )
 
 func newCheckoutCmd() *cli.Command {
 	return &cli.Command{
 		Name:      "checkout",
-		Usage:     "create a worktree for an existing local or origin branch",
+		Usage:     "enter an existing worktree or create one for a local or origin branch",
 		ArgsUsage: "<branch>",
 		Arguments: []cli.Argument{
 			&cli.StringArg{Name: "branch", Required: true},
@@ -32,6 +33,27 @@ func newCheckoutCmd() *cli.Command {
 				return err
 			}
 			client.In(gitDir)
+			// Use the registered worktree if this branch is already checked out.
+			output, err := client.Output(ctx, "worktree", "list", "--porcelain", "-z")
+			if err != nil {
+				return err
+			}
+			worktrees, err := git.ParseWorktrees(output)
+			if err != nil {
+				return err
+			}
+			for _, tree := range worktrees {
+				if tree.Bare || tree.Prunable || tree.Branch != branch {
+					continue
+				}
+				// Entering a worktree keeps its pending changes untouched.
+				if c.Bool("print-path") {
+					fmt.Fprintln(c.Root().Writer, tree.Path)
+					return nil
+				}
+				fmt.Fprintf(c.Root().Writer, "Using worktree for %s in %s\n", branch, tree.Path)
+				return nil
+			}
 			worktree := filepath.Join(filepath.Dir(gitDir), folder)
 			upstream := "origin/" + branch
 			// Reuse a local branch without fetching or changing its commits.

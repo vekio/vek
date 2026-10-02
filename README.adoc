@@ -65,8 +65,10 @@ Then use `vek bonsai clone ...` to enter the source repository's default branch
 worktree, or `vek bonsai start feature/42` to enter a new task worktree.
 The integration defines a shell function named `vek` that changes directories
 after successful Bonsai commands. You can also use the shorthand `bonsai ...`.
-Use `vek bonsai checkout feature/42` to create its `feature-42` worktree. It uses
-an existing local branch without fetching, preserving its commits and upstream.
+Use `vek bonsai checkout feature/42` to enter its existing worktree or create a
+new `feature-42` worktree. Existing worktrees keep their pending changes,
+including staged changes. It uses an existing local branch without fetching,
+preserving its commits and upstream.
 If no local branch exists, it fetches `origin` and creates a local branch tracking
 `origin/feature/42`. Local branches without an upstream track a matching cached
 origin branch when available. Pass
