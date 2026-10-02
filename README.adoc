@@ -2,6 +2,25 @@
 
 Personal developer CLI for common workflows.
 
+== Installation and version
+
+[source,console]
+----
+go install github.com/vekio/vek/cmd/vek@latest
+vek --version
+----
+
+The version comes from the module information embedded by Go. It identifies the
+installed binary and does not query GitHub for newer releases. Builds without
+a module version report `dev`.
+
+For a local release build, you can supply a version explicitly:
+
+[source,console]
+----
+go build -ldflags="-X github.com/vekio/vek/internal/cli/vek.Version=v0.1.3" -o bin/vek ./cmd/vek
+----
+
 == Features
 
 === Gitignore generation

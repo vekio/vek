@@ -10,6 +10,7 @@ import (
 func NewCmd() *cli.Command {
 	return &cli.Command{
 		Name:                  "vek",
+		Version:               buildVersion(),
 		Usage:                 "vekio power user cli",
 		EnableShellCompletion: true,
 		Commands:              registerCommands(),
